@@ -11,7 +11,7 @@ Two contracts. Send, Receive, Swap and Bridge need neither; they only power the 
 | Order | Contract | What the app uses it for |
 |---|---|---|
 | 1 | `FluxoraToken` | FLUX token: fixed 1,000,000,000 supply, burnable, gasless `permit` |
-| 2 | `FluxoraPayments` | Pay, payment requests and receipts (Pay page) |
+| 2 | `FluxoraPaymentsStandalone` | Pay, payment requests and receipts (Pay page) |
 
 You (the wallet that deploys) are `msg.sender` for every deployment. There is no private key, hidden mint, hidden
 transfer or upgrade backdoor in either contract.
@@ -21,8 +21,8 @@ Only need the Pay page? Skip the token and deploy the single payments contract i
 
 ## Files and compiler settings
 
-The files in `contracts/remix/` are self-contained (OpenZeppelin 5.6.1 is already inside them). They are generated
-from `contracts/src` (see `contracts/remix/README.md`).
+`contracts/remix/FluxoraToken.flat.sol` is self-contained (OpenZeppelin 5.6.1 is already inside it). Generate the single
+file for the payments contract when you need it (see `contracts/remix/README.md`).
 
 | Setting | Value |
 |---|---|
@@ -37,8 +37,8 @@ from `contracts/src` (see `contracts/remix/README.md`).
 2. That wallet holds some USDC (on Arc, USDC is the gas token). Check the fee MetaMask shows before you confirm.
 3. `YOUR_WALLET` below receives **all 1,000,000,000 FLUX** and becomes the Payments admin. Use a wallet you control
    well, ideally a hardware wallet or a multisig that can call contracts.
-4. Open https://remix.ethereum.org, create a workspace, and upload `FluxoraToken.flat.sol` and
-   `FluxoraPayments.flat.sol` from `contracts/remix/`.
+4. Open https://remix.ethereum.org, create a workspace, and upload `FluxoraToken.flat.sol` from `contracts/remix/` and the
+   payments file you generate with `forge flatten contracts/src/FluxoraPaymentsStandalone.sol -o FluxoraPaymentsStandalone.flat.sol`.
 
 ## Deploy (Remix: Deploy & Run Transactions)
 Environment: **Injected Provider - MetaMask**. For each step choose the contract in the dropdown, paste the values
@@ -49,11 +49,12 @@ Array arguments are typed in brackets: `[]` is empty, `["0xabc..."]` has one ent
 **1. FluxoraToken**
 - `initialHolder`: `YOUR_WALLET`
 
-**2. FluxoraPayments**
-- `admin`: `YOUR_WALLET` (or a multisig; it controls fees and the token allowlist)
-- `pauser`: `YOUR_WALLET`
+**2. FluxoraPaymentsStandalone**
+- `adminTransferDelay`: `172800` (2 days; allowed range 86400 to 2592000). This is how long an admin handover must wait.
 - `initialTokens`: `["0x3600000000000000000000000000000000000000","TOKEN_ADDRESS"]`
   (Arc USDC and FLUX)
+
+The wallet that deploys becomes the admin and pauser.
 
 ## Check the deployment, then connect the app
 Put the addresses in `.env` (locally) or in your host's environment settings, then run the read-only check:
@@ -74,7 +75,7 @@ dev server (Vite reads `.env` only at start-up) or rebuild and redeploy the site
 shows a "Configuration problem" notice instead of failing silently.
 
 ## After deployment
-- Move the admin and pauser roles to a multisig when you are ready (`grantRole`, then `renounceRole`).
+- Move the admin role to a multisig when you are ready: `beginDefaultAdminTransfer(<multisig>)`, then `acceptDefaultAdminTransfer()` from the multisig after the delay. The pauser role follows the admin.
 - The admin can change the payment fee (hard cap 1%) and allow more payment tokens. Only add standard,
   non-rebasing, non-fee-on-transfer tokens.
 

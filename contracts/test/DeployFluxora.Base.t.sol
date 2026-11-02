@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import {DeployFluxora} from "../script/DeployFluxora.s.sol";
 import {FluxoraToken} from "../src/FluxoraToken.sol";
-import {FluxoraPayments} from "../src/FluxoraPayments.sol";
+import {FluxoraPaymentsStandalone} from "../src/FluxoraPaymentsStandalone.sol";
 import {MockEtchableToken} from "./helpers/MockERC20.sol";
 
 /// @dev Shared helpers for the DeployFluxora script tests.
@@ -23,12 +23,12 @@ abstract contract DeployFluxoraBase is Test {
 
     struct Deployed {
         FluxoraToken token;
-        FluxoraPayments payments;
+        FluxoraPaymentsStandalone payments;
     }
 
     // ------------------------------------------------------------ environment hygiene
-    function _envNames() internal pure returns (string[3] memory n) {
-        n = ["FLUX_INITIAL_HOLDER", "PAYMENTS_ADMIN", "PAUSER"];
+    function _envNames() internal pure returns (string[2] memory n) {
+        n = ["FLUX_INITIAL_HOLDER", "PAYMENTS_ADMIN_TRANSFER_DELAY"];
     }
 
     /// `vm.unsetEnv` is not available in this toolchain; an empty value is treated as "unset" by `vm.envOr`.
@@ -37,12 +37,16 @@ abstract contract DeployFluxoraBase is Test {
     }
 
     function _resetEnv() internal {
-        string[3] memory n = _envNames();
+        string[2] memory n = _envNames();
         for (uint256 i; i < n.length; ++i) _unsetEnv(n[i]);
     }
 
     function _setAddr(string memory name, address a) internal {
         vm.setEnv(name, vm.toString(a));
+    }
+
+    function _setUint(string memory name, uint256 v) internal {
+        vm.setEnv(name, vm.toString(v));
     }
 
     /// Clean slate for a scenario: default env, no mocks, supported chain, valid USDC at the canonical address.
@@ -83,7 +87,7 @@ abstract contract DeployFluxoraBase is Test {
         }
         assertEq(n, 2, "expected 2 contract creations");
         d.token = FluxoraToken(created[0]);
-        d.payments = FluxoraPayments(created[1]);
+        d.payments = FluxoraPaymentsStandalone(created[1]);
     }
 
     /// Calls `script.run()`, requires it to revert with exactly `expected`, and returns how many

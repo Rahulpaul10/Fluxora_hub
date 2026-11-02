@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {DeployFluxora} from "../script/DeployFluxora.s.sol";
 import {FluxoraToken} from "../src/FluxoraToken.sol";
-import {FluxoraPayments} from "../src/FluxoraPayments.sol";
+import {FluxoraPaymentsStandalone} from "../src/FluxoraPaymentsStandalone.sol";
 import {DeployFluxoraBase} from "./DeployFluxora.Base.t.sol";
 
 /// @dev Code that `vm.mockFunction` swaps in: denies every role.
@@ -28,7 +28,7 @@ abstract contract DeployFluxoraPostDeployScenarios is DeployFluxoraBase {
         if (salt != 0) vm.setNonce(b, salt * 1000);
         uint256 n = vm.getNonce(b);
         d.token = FluxoraToken(vm.computeCreateAddress(b, n));
-        d.payments = FluxoraPayments(vm.computeCreateAddress(b, n + 1));
+        d.payments = FluxoraPaymentsStandalone(vm.computeCreateAddress(b, n + 1));
     }
 
     /// `vm.mockCall` would etch code at the not-yet-created address and make the script's CREATE collide,

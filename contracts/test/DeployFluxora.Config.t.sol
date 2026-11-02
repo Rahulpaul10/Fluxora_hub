@@ -7,23 +7,28 @@ import {DeployFluxoraBase} from "./DeployFluxora.Base.t.sol";
 /// @dev Pre-broadcast configuration validation scenarios (run serially by DeployFluxoraTest).
 ///      Every invalid value must revert before ANY contract is created.
 abstract contract DeployFluxoraConfigScenarios is DeployFluxoraBase {
-    function scenario_ZeroAddressRolesAreInvalid() public {
+    function scenario_ZeroInitialHolderIsInvalid() public {
+        _reset();
+        _setAddr("FLUX_INITIAL_HOLDER", address(0));
+        _expectPreBroadcastRevert(abi.encodeWithSelector(DeployFluxora.InvalidConfiguration.selector));
+    }
+
+    function scenario_AdminTransferDelayOutOfRangeIsInvalid() public {
         _reset();
         bytes memory err = abi.encodeWithSelector(DeployFluxora.InvalidConfiguration.selector);
-        string[3] memory names = ["FLUX_INITIAL_HOLDER", "PAYMENTS_ADMIN", "PAUSER"];
-        for (uint256 i; i < 3; ++i) {
-            _setAddr(names[i], address(0));
+        uint256[4] memory bad = [uint256(0), 1 days - 1, 30 days + 1, uint256(type(uint48).max) + 1];
+        for (uint256 i; i < bad.length; ++i) {
+            _setUint("PAYMENTS_ADMIN_TRANSFER_DELAY", bad[i]);
             _expectPreBroadcastRevert(err);
-            _unsetEnv(names[i]);
         }
     }
 
     function scenario_ConfigErrorsArePrioritisedOverUsdcChecks() public {
         _reset();
         vm.etch(USDC, "");
-        _setAddr("PAUSER", address(0));
+        _setAddr("FLUX_INITIAL_HOLDER", address(0));
         _expectPreBroadcastRevert(abi.encodeWithSelector(DeployFluxora.InvalidConfiguration.selector));
-        _unsetEnv("PAUSER");
+        _unsetEnv("FLUX_INITIAL_HOLDER");
         _expectPreBroadcastRevert(abi.encodeWithSelector(DeployFluxora.UsdcHasNoCode.selector, USDC));
     }
 }

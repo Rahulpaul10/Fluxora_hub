@@ -37,7 +37,7 @@ const addressOf = (name: string): string => {
 
 const contracts = {
   token: addressOf('FluxoraToken'),
-  payments: addressOf('FluxoraPayments'),
+  payments: addressOf('FluxoraPaymentsStandalone'),
 }
 const blocks = (data.receipts ?? []).map((r) => (r.blockNumber ? Number(BigInt(r.blockNumber)) : 0)).filter((n) => n > 0)
 const deployBlock = blocks.length ? Math.min(...blocks) : undefined

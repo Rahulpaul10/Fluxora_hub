@@ -18,6 +18,8 @@ abstract contract DeployFluxoraWiringScenarios is DeployFluxoraBase {
         // default admin and pauser = broadcaster
         assertTrue(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), b));
         assertTrue(d.payments.hasRole(PAUSER_ROLE, b));
+        assertEq(d.payments.defaultAdmin(), b);
+        assertEq(d.payments.defaultAdminDelay(), 2 days);
         assertFalse(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), address(script)));
         assertTrue(d.payments.supportedTokens(USDC));
         assertTrue(d.payments.supportedTokens(address(d.token)));
@@ -42,17 +44,25 @@ abstract contract DeployFluxoraWiringScenarios is DeployFluxoraBase {
     function scenario_EnvOverridesAreApplied() public {
         _reset();
         address holder = makeAddr("holder");
-        address admin = makeAddr("admin");
-        address pauser = makeAddr("pauser");
         _setAddr("FLUX_INITIAL_HOLDER", holder);
-        _setAddr("PAYMENTS_ADMIN", admin);
-        _setAddr("PAUSER", pauser);
+        _setUint("PAYMENTS_ADMIN_TRANSFER_DELAY", 7 days);
         (Deployed memory d, address b) = _deploy();
         assertEq(d.token.balanceOf(holder), 1_000_000_000e18);
-        assertTrue(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), admin));
-        assertFalse(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), b));
-        assertTrue(d.payments.hasRole(PAUSER_ROLE, pauser));
+        assertEq(d.token.balanceOf(b), 0);
+        assertEq(d.payments.defaultAdminDelay(), 7 days);
+        assertTrue(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), b)); // the holder gets tokens, not admin power
+        assertFalse(d.payments.hasRole(d.payments.DEFAULT_ADMIN_ROLE(), holder));
         assertTrue(d.payments.supportedTokens(USDC));
+    }
+
+    function scenario_AdminTransferDelayBoundariesAreAccepted() public {
+        _reset();
+        _setUint("PAYMENTS_ADMIN_TRANSFER_DELAY", 1 days);
+        (Deployed memory lo,) = _deploy();
+        assertEq(lo.payments.defaultAdminDelay(), 1 days);
+        _setUint("PAYMENTS_ADMIN_TRANSFER_DELAY", 30 days);
+        (Deployed memory hi,) = _deploy();
+        assertEq(hi.payments.defaultAdminDelay(), 30 days);
     }
 
     // ------------------------------------------------------------ chain guard

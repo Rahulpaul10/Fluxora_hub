@@ -4,12 +4,15 @@ pragma solidity ^0.8.20;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {FluxoraToken} from "../src/FluxoraToken.sol";
-import {FluxoraPayments} from "../src/FluxoraPayments.sol";
+import {FluxoraPaymentsStandalone} from "../src/FluxoraPaymentsStandalone.sol";
 
 /// @title FLUXORA deployment script for Arc mainnet and testnet
 /// @notice Uses Foundry's command-line keystore/account or hardware-wallet signer; never reads a private key.
-/// @dev Deploys the token and the payments contract. The payments admin defaults to the broadcaster; set
-///      PAYMENTS_ADMIN to a multisig to hand admin power to it from the first block.
+/// @dev Deploys the token and the payments contract. The broadcaster becomes the payments default admin and
+///      pauser (the constructor uses its caller). To move admin power to a multisig, call
+///      `beginDefaultAdminTransfer(multisig)` after deployment and `acceptDefaultAdminTransfer()` from the
+///      multisig once the delay has passed. Env overrides: FLUX_INITIAL_HOLDER, PAYMENTS_ADMIN_TRANSFER_DELAY
+///      (seconds, 1 to 30 days, default 2 days).
 ///      This script only describes deployment; writing it does not broadcast any transaction.
 contract DeployFluxora is Script {
     address private constant ARC_USDC = 0x3600000000000000000000000000000000000000;
@@ -17,13 +20,12 @@ contract DeployFluxora is Script {
     struct Config {
         address broadcaster;
         address initialHolder;
-        address paymentsAdmin;
-        address pauser;
+        uint48 adminTransferDelay;
     }
 
     struct Deployment {
         FluxoraToken token;
-        FluxoraPayments payments;
+        FluxoraPaymentsStandalone payments;
     }
 
     error UnsupportedChain(uint256 chainId);
@@ -47,7 +49,7 @@ contract DeployFluxora is Script {
         address[] memory tokens = new address[](2);
         tokens[0] = ARC_USDC;
         tokens[1] = address(deployed.token);
-        deployed.payments = new FluxoraPayments(config.paymentsAdmin, config.pauser, tokens);
+        deployed.payments = new FluxoraPaymentsStandalone(config.adminTransferDelay, tokens);
         _assertDeployment(deployed, config);
         vm.stopBroadcast();
         _log(config, deployed);
@@ -56,12 +58,12 @@ contract DeployFluxora is Script {
     function _configuration(address broadcaster) private view returns (Config memory config) {
         config.broadcaster = broadcaster;
         config.initialHolder = vm.envOr("FLUX_INITIAL_HOLDER", broadcaster);
-        config.paymentsAdmin = vm.envOr("PAYMENTS_ADMIN", broadcaster);
-        config.pauser = vm.envOr("PAUSER", broadcaster);
-        if (broadcaster == address(0) || config.initialHolder == address(0)
-            || config.paymentsAdmin == address(0) || config.pauser == address(0)) {
+        uint256 delay = vm.envOr("PAYMENTS_ADMIN_TRANSFER_DELAY", uint256(2 days));
+        // Same bounds as the contract constructor, checked here so a bad value fails before anything is created.
+        if (broadcaster == address(0) || config.initialHolder == address(0) || delay < 1 days || delay > 30 days) {
             revert InvalidConfiguration();
         }
+        config.adminTransferDelay = uint48(delay);
         _checkUsdc();
     }
 
@@ -103,21 +105,21 @@ contract DeployFluxora is Script {
 
     function _assertDeployment(Deployment memory deployed, Config memory config) private view {
         bytes32 adminRole = deployed.payments.DEFAULT_ADMIN_ROLE();
-        if (!deployed.payments.hasRole(adminRole, config.paymentsAdmin)) {
-            revert MissingDeploymentRole(address(deployed.payments), adminRole, config.paymentsAdmin);
+        if (!deployed.payments.hasRole(adminRole, config.broadcaster)) {
+            revert MissingDeploymentRole(address(deployed.payments), adminRole, config.broadcaster);
         }
         bytes32 pauserRole = deployed.payments.PAUSER_ROLE();
-        if (!deployed.payments.hasRole(pauserRole, config.pauser)) {
-            revert MissingDeploymentRole(address(deployed.payments), pauserRole, config.pauser);
+        if (!deployed.payments.hasRole(pauserRole, config.broadcaster)) {
+            revert MissingDeploymentRole(address(deployed.payments), pauserRole, config.broadcaster);
         }
     }
 
     function _log(Config memory config, Deployment memory deployed) private pure {
         console.log("FluxoraToken", address(deployed.token));
-        console.log("FluxoraPayments", address(deployed.payments));
+        console.log("FluxoraPaymentsStandalone", address(deployed.payments));
         console.log("FLUX initial holder (no admin role)", config.initialHolder);
-        console.log("Payments DEFAULT_ADMIN_ROLE", config.paymentsAdmin);
-        console.log("Payments PAUSER_ROLE", config.pauser);
+        console.log("Payments default admin and pauser (deployer)", config.broadcaster);
+        console.log("Payments admin transfer delay (seconds)", uint256(config.adminTransferDelay));
         console.log("Payments supported USDC", ARC_USDC);
         console.log("Payments supported FLUX", address(deployed.token));
     }

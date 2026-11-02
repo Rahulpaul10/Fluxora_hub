@@ -13,7 +13,7 @@ broadcast on mainnet (chain id 5042).
 | Contract | File | Role |
 | --- | --- | --- |
 | `FluxoraToken` | `contracts/src/FluxoraToken.sol` | FLUX, fixed supply of 1,000,000,000, burn, permit. No mint, no owner. |
-| `FluxoraPayments` | `contracts/src/FluxoraPayments.sol` | Payments, payment requests, receipts. Never holds user funds. Optional fee, capped at 1%. |
+| `FluxoraPaymentsStandalone` | `contracts/src/FluxoraPaymentsStandalone.sol` | Payments, payment requests, receipts. Never holds user funds. Optional fee, capped at 1%. Delayed two-step admin transfer. |
 
 `contracts/script/DeployFluxora.s.sol` deploys both in order and confirms the payments roles. It only runs on chain 5042 or
 5042002, and it checks that the USDC predeploy reports `USDC` with 6 decimals.
@@ -38,11 +38,13 @@ export ARC_RPC_URL=<Arc RPC URL>
 
 # Optional overrides (defaults in brackets)
 export FLUX_INITIAL_HOLDER=<address that receives the 1B FLUX>        # [the deployer]
-export PAYMENTS_ADMIN=<address that administers Payments, ideally a multisig>   # [the deployer]
-export PAUSER=<address allowed to pause Payments>                     # [the deployer]
+export PAYMENTS_ADMIN_TRANSFER_DELAY=<seconds, 86400 to 2592000>        # [172800 = 2 days] wait before an admin handover can finish
 ```
 
-The script checks these values before it sends anything and reverts with a named error if one is unsafe (a zero address). After deploying, it confirms the admin and pauser roles on Payments, so a half-wired
+The deployer becomes the Payments admin and pauser (the contract uses its deployer). To hand admin power to a multisig, call
+`beginDefaultAdminTransfer(<multisig>)` after deploying, then `acceptDefaultAdminTransfer()` from the multisig once the delay has passed.
+
+The script checks these values before it sends anything and reverts with a named error if one is unsafe (a zero holder address, or a delay outside 1 to 30 days). After deploying, it confirms the admin and pauser roles on Payments, so a half-wired
 deployment reverts.
 
 ## 3. Test and rehearse
@@ -93,5 +95,5 @@ settings from `contracts/foundry.toml` (solc 0.8.28, optimizer 200 runs, EVM `ca
 ## 7. After deployment
 
 1. **Enable more payment tokens.** Payments accepts USDC and FLUX. The admin adds a token by calling `setTokenSupported`. Only add standard, non-rebasing tokens.
-2. **Hand over roles carefully.** If the admin and `PAUSER` are your deployer wallet, move them to a multisig when you are ready.
+2. **Hand over the admin role carefully.** If the admin is your deployer wallet, move it to a multisig when you are ready with `beginDefaultAdminTransfer` / `acceptDefaultAdminTransfer` (the pauser role follows the admin).
 3. **Check the result.** `bun run verify:deployment --admin=<your admin>` is read-only and sends nothing.

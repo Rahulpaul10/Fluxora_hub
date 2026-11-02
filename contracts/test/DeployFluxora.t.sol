@@ -46,6 +46,7 @@ contract DeployFluxoraTest is
         f = _run(f, "DeploysAndWiresEverything", this.scenario_DeploysAndWiresEverything.selector);
         f = _run(f, "SucceedsOnTestnetChainId", this.scenario_SucceedsOnTestnetChainId.selector);
         f = _run(f, "EnvOverridesAreApplied", this.scenario_EnvOverridesAreApplied.selector);
+        f = _run(f, "AdminTransferDelayBoundariesAreAccepted", this.scenario_AdminTransferDelayBoundariesAreAccepted.selector);
         f = _run(f, "RevertsOnWrongChainId", this.scenario_RevertsOnWrongChainId.selector);
         // USDC sanity checks
         f = _run(f, "UsdcWrongSymbol", this.scenario_UsdcWrongSymbol.selector);
@@ -59,7 +60,8 @@ contract DeployFluxoraTest is
         f = _run(f, "UsdcDecimalsMalformed", this.scenario_UsdcDecimalsMalformed.selector);
         f = _run(f, "UsdcDecimalsCallReverts", this.scenario_UsdcDecimalsCallReverts.selector);
         // pre-broadcast config validation
-        f = _run(f, "ZeroAddressRolesAreInvalid", this.scenario_ZeroAddressRolesAreInvalid.selector);
+        f = _run(f, "ZeroInitialHolderIsInvalid", this.scenario_ZeroInitialHolderIsInvalid.selector);
+        f = _run(f, "AdminTransferDelayOutOfRangeIsInvalid", this.scenario_AdminTransferDelayOutOfRangeIsInvalid.selector);
         f = _run(f, "ConfigErrorsArePrioritisedOverUsdcChecks", this.scenario_ConfigErrorsArePrioritisedOverUsdcChecks.selector);
         // post-deploy wiring assertions
         f = _run(f, "MissingPaymentsAdminRole", this.scenario_MissingPaymentsAdminRole.selector);

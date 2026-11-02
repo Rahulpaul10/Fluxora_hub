@@ -7,10 +7,10 @@ contract addresses in this repository, and the deployment script never runs on i
 contracts/
   src/
     FluxoraToken.sol        FLUX, fixed-supply ERC-20 (burn, permit)
-    FluxoraPayments.sol     direct payments, payment requests, receipts
-    FluxoraPaymentsStandalone.sol  payments contract that needs no token; ABI and Remix steps in standalone/README.md
+    FluxoraPaymentsStandalone.sol  payments, payment requests, receipts (the payments contract); ABI and Remix steps in standalone/README.md
   test/                     unit, fuzz and invariant tests (+ test/helpers mocks)
-  script/DeployFluxora.s.sol  deployment script
+  script/DeployFluxora.s.sol  deployment script (token + payments)
+  archive/v1/               backups of the retired first payments contract, its tests and the files changed with it (see archive/v1/README.md)
   deployments/              your own record of deployed addresses (empty until you deploy)
   foundry.toml
 ```
@@ -20,10 +20,9 @@ contracts/
 | Contract | What it does |
 | --- | --- |
 | `FluxoraToken` | 1,000,000,000 FLUX minted once to the initial holder. Burnable and EIP-2612 permit. No mint function, no owner, no voting. |
-| `FluxoraPayments` | `pay`, `createRequest`, `payRequest`, `cancelRequest`. Direct transfers from payer to recipient (it never holds funds), per-user receipt and request indexes, token allowlist, optional fee on top capped at 1%, pausable. |
-| `FluxoraPaymentsStandalone` | Same payment features as one self-contained contract with a delayed two-step admin transfer. Use it when you only need the Pay page. |
+| `FluxoraPaymentsStandalone` | `pay`, `createRequest`, `payRequest`, `cancelRequest`. Direct transfers from payer to recipient (it never holds funds), per-user receipt and request indexes, token allowlist, optional fee on top capped at 1%, pausable, and a delayed two-step admin transfer. It needs no token, so it can be deployed on its own for the Pay page. |
 
-After deployment the payments admin is the address you set (`PAYMENTS_ADMIN`, default: the deployer). Use a multisig for it.
+The deployer becomes the payments admin and pauser. To move admin power to a multisig, call `beginDefaultAdminTransfer(multisig)` and, once the delay has passed, `acceptDefaultAdminTransfer()` from the multisig. The delay is set at deployment (`PAYMENTS_ADMIN_TRANSFER_DELAY`, 1 to 30 days, default 2 days).
 
 ## Build and test
 
@@ -37,7 +36,7 @@ forge install foundry-rs/forge-std          # test library, installs into ../lib
 cd contracts
 forge build
 forge test                                  # unit, fuzz and invariant tests
-forge test --match-contract FluxoraPayments  # a subset
+forge test --match-contract FluxoraPaymentsStandalone  # a subset
 ```
 
 ## Deploy (you do this, from your own wallet)

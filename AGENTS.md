@@ -18,7 +18,7 @@ Project memory for future agents. FLUXORA is a DeFi wallet on Arc mainnet (chain
 
 ## Layout
 
-- `contracts/src/` Solidity (FluxoraToken, FluxoraPayments, FluxoraPaymentsStandalone). `contracts/test/` tests (+ helpers). `contracts/script/DeployFluxora.s.sol` deploy script. `contracts/deployments/` records written by `bun run deploy:record`. `contracts/foundry.toml` standalone config; root `foundry.toml` points at the same folders.
+- `contracts/src/` Solidity (FluxoraToken, FluxoraPaymentsStandalone). `contracts/archive/v1/` holds backups of the retired first payments contract and the files changed with it. `contracts/test/` tests (+ helpers). `contracts/script/DeployFluxora.s.sol` deploy script. `contracts/deployments/` records written by `bun run deploy:record`. `contracts/foundry.toml` standalone config; root `foundry.toml` points at the same folders.
 - `src/config/` centralized config: `networks.ts` (chains, RPC overrides via env, retry/failover, explorer links), `wallet.ts` (wagmi, connectors, query retry), `contracts.ts` (addresses from `VITE_FLUXORA_*_ADDRESS`, ABIs), `abis.generated.ts` (run `forge build && bun run gen:abis`).
 - `src/lib/` tokens, Uniswap routing (`uniswap-arc.ts`), fees, activity log, payments helpers, theme (per-page colors).
 - `src/hooks/` balances, prices, on-chain transfers, history, payments.
